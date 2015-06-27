@@ -26,22 +26,22 @@ WAYS OF GETTING MPU6050
 MPU6050 mpu;
 // Use the following global variables and access functions to help store the overall
 // rotation angle of the sensor
-float last_x_angle=0;  // These are the filtered angles
-float last_y_angle=0;
-float last_z_angle=0;  
-float last_gyro_x_angle=0;  // Store the gyro angles to compare drift
-float last_gyro_y_angle=0;
-float last_gyro_z_angle=0;
+float X_angle_last=0;  // These are the filtered angles
+float Y_angle_last=0;
+float Z_angle_last=0;  
+float X_gyroAngle_Last=0;  // Store the gyro angles to compare drift
+float Y_gyroAngle_Last=0;
+float Z_gyroAngle_Last=0;
 
 
 //  Use the following global variables 
 //  to calibrate the gyroscope sensor and accelerometer readings
-float    base_x_gyro = 0;
-float    base_y_gyro = 0;
-float    base_z_gyro = 0;
-float    base_x_accel = 0;
-float    base_y_accel = 0;
-float    base_z_accel = 0;
+float    devXgyro = 0;
+float    devYgyro = 0;
+float    devZgyro = 0;
+float    devXaccel = 0;
+float    devYaccel = 0;
+float    devZaccel = 0;
 
 float    GYRO_FACTOR;// This global variable tells us how to scale gyroscope data
 float    ACCEL_FACTOR;// This global varible tells how to scale acclerometer data
@@ -76,14 +76,11 @@ void setup()
         Fastwire::setup(400, true);
     #endif  
   
-pinMode(LED_PIN, OUTPUT);pinMode(22, OUTPUT); pinMode(23, OUTPUT);
+pinMode(13, OUTPUT);pinMode(22, OUTPUT); pinMode(23, OUTPUT);
 //Serial Initialization
 Serial.begin(115200); Serial1.begin(115200); delay(500);//give time for serial to initialized 
 while (Serial.available() && Serial.read()); delay(500);// empty buffer 
 while (Serial1.available() && Serial1.read()); delay(500);// empty buffer 
-
-initializeMotors(numberOfMotors);
-commandAllMotors(MINPULSE);
 
 /*********************START OF MPU 6050 CONFIG********************************/ 
     Serial.println(F("Initializing I2C devices..."));
@@ -134,12 +131,12 @@ commandAllMotors(MINPULSE);
         //ACCEL_FACTOR = 16384.0/(AFS_SEL + 1);
         
       //C. Read High pass filter
-        uint8_t READ_AFS_SEL = mpu.getDHPFMode(); delay(50);     
+        READ_AFS_SEL = mpu.getDHPFMode(); delay(50);     
         Serial.print("DHPFMode = ");
         Serial.println(READ_AFS_SEL);     
 
       //C. Read Low pass filter
-        uint8_t READ_AFS_SEL = mpu.getDLPFMode(); delay(50);     
+        READ_AFS_SEL = mpu.getDLPFMode(); delay(50);     
         Serial.print("DLPFMode = ");
         Serial.println(READ_AFS_SEL);          
 
@@ -149,7 +146,7 @@ commandAllMotors(MINPULSE);
 
 
 // Configure LED Level Indicator
-digitalWrite(LED_PIN, LOW);
+digitalWrite(13, LOW);
 digitalWrite(22, LOW);digitalWrite(23,LOW);
 }
 
@@ -195,12 +192,12 @@ const float RADIANS_TO_DEGREES = 57.2958; //180/3.14159
         float  Az = azz/R ;//Serial.println(azz);
           
         // Remove offsets and scale gyro data  
-        float gyro_x = (gx - base_x_gyro)/GYRO_FACTOR;
-        float gyro_y = (gy - base_y_gyro)/GYRO_FACTOR;
-        float gyro_z = (gz - base_z_gyro)/GYRO_FACTOR;
-        float accel_x = Ax; // - base_x_accel;
-        float accel_y = Ay; // - base_y_accel;
-        float accel_z = Az; // - base_z_accel;
+        float gyro_x = (gx - devXgyro)/GYRO_FACTOR;
+        float gyro_y = (gy - devYgyro)/GYRO_FACTOR;
+        float gyro_z = (gz - devZgyro)/GYRO_FACTOR;
+        float accel_x = Ax; // - devXaccel;
+        float accel_y = Ay; // - devYaccel;
+        float accel_z = Az; // - devZaccel;
         
 
               
@@ -210,25 +207,26 @@ const float RADIANS_TO_DEGREES = 57.2958; //180/3.14159
 
         // Compute the (filtered) gyro angles
         
-        float gyro_angle_x = gyro_x*dt + last_x_angle;
-        float gyro_angle_y = gyro_y*dt + last_y_angle;
-        float gyro_angle_z = gyro_z*dt + last_z_angle;
+        float gyro_angle_x = gyro_x*dt + X_angle_last;
+        float gyro_angle_y = gyro_y*dt + Y_angle_last;
+        float gyro_angle_z = gyro_z*dt + Z_angle_last;
         
         
                            
          // Apply the complementary filter to figure out the change in angle - choice of alpha is
         // estimated now.  Alpha depends on the sampling rate...
         const float alpha = 0.98;
-        float angle_x = alpha*gyro_angle_x + (1.0 - alpha)*accel_angle_x; last_x_angle = angle_x; 
-        float angle_y = alpha*gyro_angle_y + (1.0 - alpha)*accel_angle_y; last_y_angle = angle_y;
-        float angle_z = gyro_angle_z; last_z_angle = angle_z;  //Accelerometer doesn't give z-angle
+        float angle_x = alpha*gyro_angle_x + (1.0 - alpha)*accel_angle_x; X_angle_last = angle_x; 
+        float angle_y = alpha*gyro_angle_y + (1.0 - alpha)*accel_angle_y; Y_angle_last = angle_y;
+        float angle_z = gyro_angle_z; Z_angle_last = angle_z;  //Accelerometer doesn't give z-angle
+        
         angle_z = alpha*(angle_z + gyro_z*dt)+(1.0 - alpha)*gyro_angle_z;
               if (angle_z>0)angle_z=angle_z-0.00005; 
               if (angle_z<0)angle_z=angle_z+0.00003; 
         // Compute the drifting gyro angles
-        float unfiltered_gyro_angle_x = gyro_x*dt + last_gyro_x_angle; last_gyro_x_angle = unfiltered_gyro_angle_x;
-        float unfiltered_gyro_angle_y = gyro_y*dt + last_gyro_y_angle; last_gyro_y_angle = unfiltered_gyro_angle_y;
-        float unfiltered_gyro_angle_z = gyro_z*dt + last_gyro_z_angle; last_gyro_z_angle = unfiltered_gyro_angle_z;     
+        float unfiltered_gyro_angle_x = gyro_x*dt + X_gyroAngle_Last; X_gyroAngle_Last = unfiltered_gyro_angle_x;
+        float unfiltered_gyro_angle_y = gyro_y*dt + Y_gyroAngle_Last; Y_gyroAngle_Last = unfiltered_gyro_angle_y;
+        float unfiltered_gyro_angle_z = gyro_z*dt + Z_gyroAngle_Last; Z_gyroAngle_Last = unfiltered_gyro_angle_z;     
        
         
 
@@ -312,27 +310,27 @@ float gzEMA(float new_value) {
 // Simple calibration - just average first few readings to subtract
 // from the later data
 void calibrate_sensors() {
-  int       num_readings = 500; //Default 10
+  int       readCount = 500; //Default 10
 
   // Discard the first reading (don't know if this is needed or
   // not, however, it won't hurt.)
   mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
   
   // Read and average the raw values
-  for (int i = 0; i < num_readings; i++) {
+  for (int i = 0; i < readCount; i++) {
     mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-    base_x_gyro += gx;
-    base_y_gyro += gy;
-    base_z_gyro += gz;
-    base_x_accel += ax;
-    base_y_accel += ay;
-    base_y_accel += az;
+    devXgyro += gx;
+    devYgyro += gy;
+    devZgyro += gz;
+    devXaccel += ax;
+    devYaccel += ay;
+    devZaccel += az;
   }
   
-  base_x_gyro /= num_readings;
-  base_y_gyro /= num_readings;
-  base_z_gyro /= num_readings;
-  base_x_accel /= num_readings;
-  base_y_accel /= num_readings;
-  base_z_accel /= num_readings;
+  devXgyro  /= readCount;
+  devYgyro  /= readCount;
+  devZgyro  /= readCount;
+  devXaccel /= readCount;
+  devYaccel /= readCount;
+  devZaccel /= readCount;
 }
