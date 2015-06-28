@@ -2,19 +2,9 @@ Enter file contents here
 
  /*
 WAYS OF GETTING MPU6050
+COMPATIBLE: ARDUINO DUE, MEGA, UNO
 */
-//////////////////////////////
-//  IMU Bank Orientation    //
-//        -X  +X            //
-//           |              //
-//    -Y     |    -Y        //
-//       ---------          //
-//    +Y     |    +Y        //
-//           |              //  
-//        -X  +X            //
-//       Pitch about Y      //
-//       Rolls about X      //
-//////////////////////////////
+
 #include "Arduino.h"
 #include "Math.h"
 #include "I2Cdev.h"
